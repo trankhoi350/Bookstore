@@ -1,0 +1,199 @@
+package com.project.bookstore.book;
+
+import io.github.bonigarcia.wdm.WebDriverManager;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import org.springframework.stereotype.Service;
+import java.net.URLEncoder;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+
+
+@Service
+public class AmazonService {
+    private WebDriver driver;
+
+    @PostConstruct
+    public void initialize() {
+        WebDriverManager.chromedriver().setup();
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless");
+        options.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+        options.addArguments("--disable-blink-features=AutomationControlled");
+        driver = new ChromeDriver(options);
+    }
+
+    public List<AmazonBookDto> searchAmazonBooks(String query) {
+        List<AmazonBookDto> results = new ArrayList<>();
+        try {
+            String url = "https://www.amazon.com/s?k=" + URLEncoder.encode(query, "UTF-8") + "&i=stripbooks";
+            System.out.println("Request URL: " + url);
+
+            driver.get(url);
+
+            // Use retry logic to wait for the main slot to load
+            if (!waitForMainSlot(driver, 3)) {
+                System.out.println("Failed to load main content after retries.");
+                return results;
+            }
+
+            // Give additional time for dynamic content to render
+            Thread.sleep(3000);
+
+            System.out.println("Page title: " + driver.getTitle());
+
+            List<WebElement> bookItems = driver.findElements(
+                    By.cssSelector("div.s-main-slot div[data-component-type='s-search-result']")
+            );
+            System.out.println("Found " + bookItems.size() + " book items");
+
+            for (WebElement book : bookItems) {
+                try {
+                    String bookId = book.getAttribute("data-asin");
+                    System.out.println("Processing book with ASIN: " + bookId);
+
+                    // Extract title (using dynamic selectors)
+                    String title = "N/A";
+                    try {
+                        List<WebElement> h2Elements = book.findElements(By.tagName("h2"));
+                        for (WebElement h2 : h2Elements) {
+                            String ariaLabel = h2.getAttribute("aria-label");
+                            if (ariaLabel != null && !ariaLabel.isEmpty()) {
+                                title = ariaLabel;
+                                break;
+                            }
+                            try {
+                                String spanText = h2.findElement(By.cssSelector("span.a-size-medium.a-color-base.a-text-normal")).getText();
+                                if (spanText != null && !spanText.isEmpty()) {
+                                    title = spanText;
+                                    break;
+                                }
+                            } catch (Exception e) {
+                                try {
+                                    String spanText = h2.findElement(By.tagName("span")).getText();
+                                    if (spanText != null && !spanText.isEmpty()) {
+                                        title = spanText;
+                                        break;
+                                    }
+                                } catch (Exception ex) {
+                                    // Continue checking next h2 element
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Failed to extract title: " + e.getMessage());
+                    }
+
+                    // AUTHOR extraction (similar as before)
+                    String author = "N/A";
+                    try {
+                        List<WebElement> authorLinks = book.findElements(
+                                By.cssSelector("a.a-size-base.a-link-normal.s-underline-text")
+                        );
+                        if (!authorLinks.isEmpty()) {
+                            author = authorLinks.get(0).getText();
+                        } else {
+                            authorLinks = book.findElements(By.cssSelector(".a-row a"));
+                            for (WebElement link : authorLinks) {
+                                String text = link.getText();
+                                if (text != null && !text.isEmpty() &&
+                                        !text.contains("$") && !text.contains("stars")) {
+                                    author = text;
+                                    break;
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Failed to extract author: " + e.getMessage());
+                    }
+
+                    // PRICE extraction
+                    String price = "N/A";
+                    try {
+                        List<WebElement> priceElements = book.findElements(By.cssSelector(".a-price"));
+                        if (!priceElements.isEmpty()) {
+                            WebElement priceElement = priceElements.get(0);
+                            try {
+                                String wholePart = priceElement.findElement(By.cssSelector(".a-price-whole")).getText();
+                                String fractionPart = priceElement.findElement(By.cssSelector(".a-price-fraction")).getText();
+                                price = "$" + wholePart + "." + fractionPart;
+                            } catch (Exception e) {
+                                price = priceElement.getText().replace("\n", ".");
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Failed to extract price: " + e.getMessage());
+                    }
+
+                    // IMAGE extraction
+                    String imageUrl = "N/A";
+                    try {
+                        WebElement imgElement = book.findElement(By.cssSelector("img.s-image"));
+                        imageUrl = imgElement.getAttribute("src");
+                    } catch (Exception e) {
+                        System.out.println("Failed to extract image URL: " + e.getMessage());
+                    }
+
+                    System.out.println("Title: " + title);
+                    System.out.println("Author: " + author);
+                    System.out.println("Price: " + price);
+                    System.out.println("Image URL: " + imageUrl);
+                    System.out.println("------------------------------------------------");
+
+                    if (title != null && !title.isEmpty() && !title.equals("N/A")) {
+                        AmazonBookDto dto = new AmazonBookDto(title, author, price, imageUrl);
+                        results.add(dto);
+                    }
+
+                } catch (Exception e) {
+                    System.out.println("Error processing book item: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+
+            System.out.println("Successfully processed " + results.size() + " books");
+
+        } catch (Exception e) {
+            System.out.println("General error in searchAmazonBooks: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return results;
+    }
+
+
+    @PreDestroy
+    public void cleanup() {
+        if (driver != null) {
+            driver.quit();
+        }
+    }
+
+    private boolean waitForMainSlot(WebDriver driver, int maxRetries) {
+        int attempts = 0;
+        while (attempts < maxRetries) {
+            try {
+                WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(30));
+                wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("div.s-main-slot")));
+                return true;
+            } catch (Exception e) {
+                System.out.println("Attempt " + (attempts + 1) + " failed. Retrying...");
+                attempts++;
+                driver.navigate().refresh();
+                try {
+                    Thread.sleep(5000); // Wait additional time after refresh
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+        return false;
+    }
+}

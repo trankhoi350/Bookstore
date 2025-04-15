@@ -1,0 +1,400 @@
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.anchorPane {
+  background: white;
+  padding: 50px;
+  margin-bottom: 40px;
+  border-radius: 12px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  width: 350px;
+}
+
+h2.login {
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 40px;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0px 0px 5px rgba(0, 123, 255, 0.5);
+}
+
+.login-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.3s ease-in-out;
+}
+
+.login-button:hover {
+  background-color: #0056b3;
+}
+
+.register-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  width: 101%;
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.3s ease-in-out;
+}
+
+.register-button:hover {
+  background-color: #0056b3;
+}
+
+/* BookHubHomepage.css */
+
+/* Global Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Arial', sans-serif;
+  line-height: 1.6;
+  color: #333;
+}
+
+/* Container */
+.bookhub-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #fff;
+}
+
+/* Header Styles */
+.bookhub-header {
+  padding: 24px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bookhub-logo {
+  font-size: 32px;
+  font-weight: bold;
+  color: #222;
+  margin-bottom: 10px;
+}
+
+/* Search Styles */
+.search-container {
+  width: 100%;
+}
+
+.search-form {
+  position: relative;
+  width: 100%;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 16px;
+  border: 2px solid #3b82f6;
+  border-radius: 8px;
+  outline: none;
+}
+
+.search-input:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+.search-button {
+  height: 46px;
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0 20px;
+  border-radius: 0 8px 8px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-button:hover {
+  background-color: #2563eb;
+}
+
+/* Navigation Icons */
+.nav-icons {
+  display: flex;
+  gap: 16px;
+  align-self: flex-end;
+}
+
+.icon-button {
+  background: none;
+  border: none;
+  color: #4b5563;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.icon-button:hover {
+  color: #111827;
+  background-color: #f3f4f6;
+}
+
+/* Main Content Styles */
+.bookhub-main {
+  flex: 1;
+  padding: 48px 24px;
+}
+
+.main-content {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.welcome-section {
+  text-align: center;
+  margin-bottom: 64px;
+}
+
+.welcome-title {
+  font-size: 36px;
+  font-weight: bold;
+  color: #111827;
+  margin-bottom: 24px;
+}
+
+.welcome-text {
+  font-size: 20px;
+  color: #4b5563;
+  margin-bottom: 16px;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.welcome-subtext {
+  font-size: 18px;
+  color: #6b7280;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Features Grid */
+.features-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  margin-bottom: 48px;
+}
+
+.feature-card {
+  background-color: #eff6ff;
+  padding: 24px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.feature-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #1f2937;
+}
+
+.feature-text {
+  color: #4b5563;
+}
+
+/* Footer Styles */
+.bookhub-footer {
+  background-color: #f9fafb;
+  border-top: 1px solid #e5e5e5;
+  padding: 32px 24px;
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.footer-main {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.footer-brand {
+  margin-bottom: 32px;
+}
+
+.footer-logo {
+  font-size: 24px;
+  font-weight: bold;
+  color: #111827;
+  margin-bottom: 12px;
+}
+
+.footer-tagline {
+  color: #6b7280;
+  margin-bottom: 16px;
+}
+
+.social-links {
+  display: flex;
+  gap: 16px;
+}
+
+.social-link {
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+.social-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.footer-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 24px;
+}
+
+.footer-heading {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #374151;
+}
+
+.footer-list {
+  list-style: none;
+}
+
+.footer-list li {
+  margin-bottom: 8px;
+}
+
+.footer-list a {
+  color: #6b7280;
+  text-decoration: none;
+}
+
+.footer-list a:hover {
+  color: #374151;
+  text-decoration: underline;
+}
+
+.footer-bottom {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e5e5;
+  text-align: center;
+}
+
+.copyright {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* Responsive styles */
+@media (min-width: 768px) {
+  .header-content {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .bookhub-logo {
+    flex: 0 0 auto;
+    margin-right: 24px;
+  }
+
+  .search-container {
+    flex: 1;
+  }
+
+  .nav-icons {
+    flex: 0 0 auto;
+    align-self: center;
+    margin-left: 24px;
+  }
+
+  .features-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .footer-main {
+    flex-direction: row;
+  }
+
+  .footer-brand {
+    flex: 1;
+    margin-bottom: 0;
+  }
+
+  .footer-links {
+    flex: 2;
+  }
+}
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px,1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+.book-card {
+  border: 1px solid #ddd;
+  padding: 1rem;
+  border-radius: 4px;
+  text-align: center;
+}
+.book-cover {
+  max-width: 100%;
+  height: auto;
+  margin-bottom: 0.5rem;
+}
