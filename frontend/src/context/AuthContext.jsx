@@ -13,8 +13,13 @@ export const AuthProvider = ({ children }) => {
 
     const logout = () => {
         localStorage.removeItem("token");
+        // wipe the old search when they sign out
+        localStorage.removeItem("lastQuery");
+        localStorage.removeItem("lastBooks");
+        localStorage.removeItem("lastToken");
         setUser(null);
     };
+
 
     useEffect(() => {
         const token = localStorage.getItem("token");

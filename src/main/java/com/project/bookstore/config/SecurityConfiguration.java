@@ -37,6 +37,8 @@ public class SecurityConfiguration {
 
                         .requestMatchers("/api/v1/demo-controller").permitAll()
 
+                        .requestMatchers("/covers/**").permitAll()
+
                         .requestMatchers("/api/bookstore/google", "/api/bookstore/openlibrary", "/api/bookstore/amazon").permitAll()
 
                         .requestMatchers("/api/bookstore/search").permitAll()

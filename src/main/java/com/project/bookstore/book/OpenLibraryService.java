@@ -79,37 +79,24 @@ public class OpenLibraryService {
                         if (doc.has("isbn")) {  
                             JSONArray isbnArray = doc.getJSONArray("isbn");
                             if (!isbnArray.isEmpty()) {
-                                isbn = isbnArray.getString(0);
+                                isbn = isbnArray.optString(0);
                             }
                         }
 
+                        // cover image logic
                         String imageUrl = null;
-                        // 1) try cover_i
                         int coverId = doc.optInt("cover_i", -1);
                         if (coverId > 0) {
                             imageUrl = "https://covers.openlibrary.org/b/id/" + coverId + "-L.jpg";
+                        } else if (doc.has("isbn") && !doc.getJSONArray("isbn").isEmpty()) {
+                            String isbn0 = doc.getJSONArray("isbn").optString(0);
+                            imageUrl = "https://covers.openlibrary.org/b/isbn/" + isbn0 + "-L.jpg";
+                        } else if (doc.has("edition_key") && !doc.getJSONArray("edition_key").isEmpty()) {
+                            String olid = doc.getJSONArray("edition_key").optString(0);
+                            imageUrl = "https://covers.openlibrary.org/b/olid/" + olid + "-L.jpg";
                         }
-
-                        // 2) fallback to first ISBN
-                        if (imageUrl == null && doc.has("isbn")) {
-                            JSONArray isbns = doc.getJSONArray("isbn");
-                            if (!isbns.isEmpty()) {
-                                String isbn0  = isbns.optString(0);
-                                imageUrl = "https://covers.openlibrary.org/b/isbn/" + isbn0 + "-L.jpg";
-                            }
-                        }
-
-                        // 3) fallback to edition_key (OLID)
-                        if (doc.has("edition_key") && imageUrl == null) {
-                            JSONArray eds = doc.getJSONArray("edition_key");
-                            if (!eds.isEmpty()) {
-                                String olid = eds.optString(0);
-                                imageUrl = "https://covers.openlibrary.org/b/olid/" + olid + "-L.jpg";
-                            }
-                        }
-
                         if (imageUrl == null) {
-                            imageUrl = "https://via.placeholder.com/150x220?text=No+Cover";
+                            imageUrl = "/placeholder.jpg";
                         }
 
                         BigDecimal price = pricingService.determinePrice(publicationYear, pageCount, genre);

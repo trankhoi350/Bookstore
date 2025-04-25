@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/cart")
+@CrossOrigin("http://localhost:5173")
 public class CartController {
     private final CartService cartService;
     private final JwtService jwtService;
@@ -35,6 +36,7 @@ public class CartController {
         if (token != null && token.startsWith("Bearer ")) {
             token = token.substring(7);
         }
+        System.out.println("Received token: " + token);
         String email = jwtService.extractUsername(token);
         Cart cart = cartService.addItemToCart(email, request);
         return ResponseEntity.ok(cart);

@@ -36,6 +36,8 @@ public class Book {
     @Setter
     private LocalDate publishDate;
 
+    @Setter
+    @Getter
     private String imageUrl;
 
     public Book() {

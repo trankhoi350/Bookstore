@@ -10,28 +10,41 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import java.net.URLEncoder;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 
 @Service
 public class AmazonService {
     private WebDriver driver;
+    private final Logger log = LoggerFactory.getLogger(getClass());
 
     @PostConstruct
     public void initialize() {
-        WebDriverManager.chromedriver().setup();
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless");
-        options.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
-        options.addArguments("--disable-blink-features=AutomationControlled");
-        driver = new ChromeDriver(options);
+        try {
+            WebDriverManager.chromedriver().setup();
+            ChromeOptions options = new ChromeOptions()
+                    .addArguments("--headless")
+                    .addArguments("user‑agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+                    .addArguments("--disable-blink-features=AutomationControlled");
+            driver = new ChromeDriver(options);
+        } catch (Exception e) {
+            log.warn("Could not initialize ChromeDriver – Amazon searches will be disabled", e);
+            driver = null;
+        }
     }
 
     public List<AmazonBookDto> searchAmazonBooks(String query) {
+        if (driver == null) {
+            return Collections.emptyList();
+        }
         List<AmazonBookDto> results = new ArrayList<>();
         try {
             String url = "https://www.amazon.com/s?k=" + URLEncoder.encode(query, "UTF-8") + "&i=stripbooks";
@@ -134,7 +147,7 @@ public class AmazonService {
                     }
 
                     // IMAGE extraction
-                    String imageUrl = "N/A";
+                    String imageUrl = "/placeholder.jpg";
                     try {
                         WebElement imgElement = book.findElement(By.cssSelector("img.s-image"));
                         imageUrl = imgElement.getAttribute("src");
@@ -149,7 +162,7 @@ public class AmazonService {
                     System.out.println("------------------------------------------------");
 
                     if (title != null && !title.isEmpty() && !title.equals("N/A")) {
-                        AmazonBookDto dto = new AmazonBookDto(title, author, price, imageUrl);
+                        AmazonBookDto dto = new AmazonBookDto(bookId, title, author, price, imageUrl);
                         results.add(dto);
                     }
 

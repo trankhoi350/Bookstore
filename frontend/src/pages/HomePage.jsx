@@ -1,11 +1,31 @@
-import React, {useState, useContext, use} from "react";
+import React, {useState, useContext, use, useEffect} from "react";
 import { Search, Bell, ShoppingCart, Menu } from 'lucide-react';
+import stringSimilarity from "string-similarity";
+import {AuthContext} from "../context/AuthContext.jsx";
+import { Link } from "react-router-dom";
 
 const HomePage = () => {
+    const { user } = useContext(AuthContext);
     const [searchQuery, setSearchQuery] = useState('');
     const [books, setBooks] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+
+    useEffect(() => {
+        const token     = localStorage.getItem("token");
+        const lastToken = localStorage.getItem("lastToken");
+        if (token && lastToken && token === lastToken) {
+            const savedBooks  = localStorage.getItem("lastBooks");
+            const savedQuery  = localStorage.getItem("lastQuery");
+            if (savedBooks) {
+                setBooks(JSON.parse(savedBooks));
+                setSearchQuery(savedQuery || "");
+            }
+        }
+    }, []);
+
+
+    const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
@@ -15,31 +35,90 @@ const HomePage = () => {
         e.preventDefault();
         if (!searchQuery.trim()) return;
         setLoading(true);
-        setError(null)
+        setError(null);
 
         try {
-            const token = localStorage.getItem("jwtToken");
-            const response = await fetch(`http://localhost:8080/api/bookstore/search?query=${encodeURIComponent(searchQuery)}`,
-                {
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Authorization": `Bearer ${token}`
-                        }
-                    });
+            const token = localStorage.getItem("token");
+            const response = await fetch(`http://localhost:8080/api/bookstore/search?query=${encodeURIComponent(searchQuery)}`, {
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
+
             if (data.single) {
                 setBooks([data.singleResult]);
-            }
-            else {
+            } else {
                 const combined = [
-                    ...(data.localResults || []),
-                    ...(data.googleBookDto || []),
-                    ...(data.openLibraryResults || []),
-                    ...(data.amazonResult || []),
+                    ...(data.localResults || []).map(b => ({ ...b, source: "INTERNAL" })),
+                    ...(data.googleBookDto || []).map(b => ({ ...b, source: "GOOGLE" })),
+                    ...(data.openLibraryResults || []).map(b => ({ ...b, source: "OPENLIBRARY" })),
+                    ...(data.amazonResult || []).map(b => ({ ...b, source: "AMAZON" })),
                 ];
-                setBooks(combined);
-                setError(null);
+
+                // Log what's coming from the API
+                console.log("Combined results before deduplication:", combined.length);
+
+                // More lenient deduplication approach
+                const uniqueBooks = [];
+                const seen = new Map(); // Use Map to track existing books with their similarity scores
+
+                for (const book of combined) {
+                    if (!book.title || !book.author) continue;
+
+                    // Create a book signature that considers only *exact* matches as duplicates
+                    const exactIsbn = (book.isbn || "").replace(/-/g, "").trim();
+
+                    // Check for ISBN matches first (highest confidence)
+                    if (exactIsbn && exactIsbn !== "n/a" && exactIsbn !== "N/A") {
+                        if ([...seen.values()].some(b =>
+                            (b.isbn || "").replace(/-/g, "").trim() === exactIsbn
+                        )) {
+                            continue; // Skip this duplicate
+                        }
+                    }
+
+                    // Extract core title and language information
+                    const normalizedTitle = book.title.toLowerCase().trim();
+                    const normalizedAuthor = book.author.toLowerCase().trim();
+
+                    // Parse language information more carefully
+                    const techMatch = normalizedTitle.match(/\b(in|with)\s+([a-z#][\w+.#]*)\b/i);
+                    const tech = techMatch ? techMatch[2].toLowerCase() : "";
+
+                    // Check for edition information
+                    const editionMatch = normalizedTitle.match(/\b(\d+[a-z]{0,2}|second|third|fourth|fifth)\s+edition\b/i);
+                    const edition = editionMatch ? editionMatch[0].toLowerCase() : "";
+
+                    // Extract the base title without tech or edition qualifiers
+                    const baseTitle = normalizedTitle
+                        .replace(/\s+(in|with)\s+[a-z#][\w+.#]*/gi, "")
+                        .replace(/\s+-\s+.*edition/gi, "")
+                        .replace(/\s+[\w\s]*edition/gi, "")
+                        .replace(/\s*-\s*a\s+handbook\s+of.*$/i, "")
+                        .replace(/\s*:\s*a\s+handbook\s+of.*$/i, "")
+                        .replace(/^\s*the\s+art\s+of\s+/i, "")
+                        .trim();
+
+                    // Create a "signature" for the book that distinguishes tech variations
+                    const signature = `${baseTitle}|${tech}|${edition}|${normalizedAuthor}`;
+
+                    // Check if we've seen this exact signature before
+                    if (seen.has(signature)) continue;
+
+                    // Consider this a unique book based on our criteria
+                    seen.set(signature, book);
+                    uniqueBooks.push(book);
+                }
+
+                console.log("Unique books after deduplication:", uniqueBooks.length);
+                setBooks(uniqueBooks);
+                localStorage.setItem("lastQuery", searchQuery);
+                localStorage.setItem("lastBooks", JSON.stringify(uniqueBooks));
+                localStorage.setItem("lastToken", token);
             }
         } catch (error) {
             console.error("Search error:", error);
@@ -48,6 +127,49 @@ const HomePage = () => {
             setLoading(false);
         }
     };
+
+    const handleAddToCart = async (books) => {
+        const token = localStorage.getItem("token");
+        console.log("addToCart jwt: ", token);
+        if (!token) {
+            alert("You must be logged in to add to cart");
+            return;
+        }
+
+        if (!token || token.split(".").length !== 3) {
+            alert("You must be logged in (or your session expired).");
+            setLoading(false);
+            return;
+        }
+        const payload = {
+            quantity: 1,
+            itemType: "BOOK",
+            itemSource: books.source,
+            bookId: books.source === "INTERNAL" ? books.id : undefined,
+            externalId: books.source !== "INTERNAL" ? books.id : undefined,
+            title: books.title,
+            author: books.author,
+            price: books.price,
+            isbn: books.isbn,
+            imageUrl: books.imageUrl
+        };
+
+        try {
+            const res = await fetch("http://localhost:8080/api/v1/cart/add", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            alert("Added to cart!");
+        } catch (e) {
+            console.error("addToCart failed:", e)
+            alert("Could not add to cart. See console for details")
+        }
+    }
 
     return (
         <div className="bookhub-container">
@@ -138,10 +260,16 @@ const HomePage = () => {
                     {/* Results */}
                     <div className="results-grid">
                         {books.length === 0 && !loading && <p>No results</p>}
-                        {books.map((b, i) => (
-                            <div key={i} className="book-card">
+                        {books.map((b) => (
+                            <div key={b.id} className="book-card">
+                                <Link key={`${b.source}-${b.id}`}
+                                      to={`/book/${b.source}/${encodeURIComponent(b.id)}`}
+                                      state={{ book: b }}
+                                      className="book-card">
                                 <img
-                                    src={b.imageUrl ? b.imageUrl : "/placeholder.jpg"} alt={b.title} className="book-cover"
+                                    src={b.imageUrl.startsWith("http") ? b.imageUrl : `${API_BASE}${b.imageUrl}`}
+                                    alt={b.title}
+                                    className="book-cover"
                                     onError={e => {
                                         e.currentTarget.onerror = null;
                                         e.currentTarget.src = "/placeholder.jpg";
@@ -152,6 +280,8 @@ const HomePage = () => {
                                 <p><strong>Author:</strong> {b.author}</p>
                                 {b.price != null && <p><strong>Price:</strong> {b.price}</p>}
                                 {b.isbn && <p><strong>ISBN:</strong> {b.isbn}</p>}
+                                <button className="add-to-cart-button" onClick={() => handleAddToCart(b)}>Add to Cart</button>
+                                </Link>
                             </div>
                         ))}
                     </div>
@@ -210,4 +340,20 @@ const HomePage = () => {
     );
 };
 
+
+const dedupeFuzzy = (arr, threshold = 0.8) => {
+    const kept = [];
+    for (const book of arr) {
+        // see if we already kept something “close” in title
+        const match = kept.find(b => {
+            const sim = stringSimilarity.compareTwoStrings(
+                b.title.toLowerCase().trim(),
+                book.title.toLowerCase().trim()
+            );
+            return sim >= threshold;
+        });
+        if (!match) kept.push(book);
+    }
+    return kept;
+}
 export default HomePage

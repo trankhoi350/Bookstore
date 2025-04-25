@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 @Setter
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class AmazonBookDto {
+    private String id;
     private String title;
     private String author;
     private String price;
@@ -16,7 +17,8 @@ public class AmazonBookDto {
     private String productUrl;
 
 
-    public AmazonBookDto(String title, String author, String price, String productUrl) {
+    public AmazonBookDto(String id, String title, String author, String price, String productUrl) {
+        this.id = id;
         this.title = title;
         this.author = author;
         this.price = price;

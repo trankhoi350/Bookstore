@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping(path = "api/bookstore")
@@ -15,6 +16,8 @@ public class BookController {
     private final GoogleBookService googleBookService;
     private final OpenLibraryService openLibraryService;
     private final AmazonService amazonService;
+
+
 
     @Autowired
     public BookController(BookService localBookService,
@@ -33,76 +36,26 @@ public class BookController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<BookSearchResponse> search(@RequestParam String query) {
-        //Local DB
-        var localHits = localBookService.fullTextSearch(query);
-        var googleHits = googleBookService.searchGoogleBooks(query);
-        var openLibraryHits = openLibraryService.searchOpenLibraryBook(query);
-        var amazonHits = amazonService.searchAmazonBooks(query);
+    public BookSearchResponse search(@RequestParam String query) {
+        // A) first, search your own database
+        List<Book> local = localBookService.fullTextSearch(query);
 
-        int total = localHits.size() + googleHits.size() + openLibraryHits.size() + amazonHits.size();
+        // B) see if *any* local hit is an exact title match
+        Optional<Book> exact = local.stream()
+                .filter(b -> b.getTitle().equalsIgnoreCase(query))
+                .findFirst();
 
-        if (total == 1) {
-            UnifiedBookDto single;
-            if (!localHits.isEmpty()) {
-                var books = localHits.get(0);
-                single = new UnifiedBookDto(
-                        "local",
-                        books.getId().toString(),
-                        books.getTitle(),
-                        books.getAuthor(),
-                        books.getIsbn(),
-                        books.getPrice().toString(),
-                        books.getPublishDate() != null ? books.getPublishDate().getYear() : null,
-                        null, null, null
-                );
-            }
-            else if (!googleHits.isEmpty()) {
-                var goolgeBooks = googleHits.get(0);
-                single = new UnifiedBookDto(
-                        "google",
-                        goolgeBooks.getId(),
-                        goolgeBooks.getTitle(),
-                        goolgeBooks.getAuthor(),
-                        goolgeBooks.getIsbn(),
-                        goolgeBooks.getPrice().toString(),
-                        goolgeBooks.getPublicationYear(),
-                        goolgeBooks.getPageCount(),
-                        goolgeBooks.getGenre(),
-                        goolgeBooks.getImageUrl()
-                );
-            }
-            else if (!openLibraryHits.isEmpty()) {
-                var openLibraryBooks = openLibraryHits.get(0);
-                single = new UnifiedBookDto(
-                        "openlibrary",
-                        openLibraryBooks.getKey(),
-                        openLibraryBooks.getTitle(),
-                        openLibraryBooks.getAuthor(),
-                        openLibraryBooks.getIsbn(),
-                        openLibraryBooks.getPrice().toString(),
-                        openLibraryBooks.getPublicationYear(),
-                        openLibraryBooks.getPageCount(),
-                        openLibraryBooks.getGenre(),
-                        openLibraryBooks.getImageUrl()
-                );
-            }
-            else {
-                var amazonBooks = amazonHits.get(0);
-                single = new UnifiedBookDto(
-                        "amazon", null,
-                        amazonBooks.getTitle(),
-                        amazonBooks.getAuthor(),
-                        null,
-                        amazonBooks.getPrice(),
-                        null,
-                        null,
-                        null,
-                        amazonBooks.getProductUrl()
-                );
-            }
-            return ResponseEntity.ok(new BookSearchResponse(single));
+        if (exact.isPresent()) {
+            // as soon as we find *one* exact match, return "single"
+            return new BookSearchResponse(exact.get());
         }
-        return ResponseEntity.ok(new BookSearchResponse(localHits, googleHits, openLibraryHits, amazonHits));
+
+        // C) no exact local match → now hit the external APIs
+        List<GoogleBookDto>   google = googleBookService.searchGoogleBooks(query);
+        List<OpenLibraryBookDto> open  = openLibraryService.searchOpenLibraryBook(query);
+        List<AmazonBookDto>      amazon= amazonService.searchAmazonBooks(query);
+
+        // D) wrap them all up in the normal multi‐list constructor
+        return new BookSearchResponse(local, google, open, amazon);
     }
 }

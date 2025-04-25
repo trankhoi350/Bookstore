@@ -1,10 +1,8 @@
 package com.project.bookstore.auth;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
+@Getter
 @Data
 @Builder
 @AllArgsConstructor
@@ -13,16 +11,8 @@ public class AuthenticationRequest {
     private String email;
     private String password;
 
-    public String getEmail() {
-        return email;
-    }
-
     public void setEmail(String email) {
         this.email = email;
-    }
-
-    public String getPassword() {
-        return password;
     }
 
     public void setPassword(String password) {

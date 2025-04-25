@@ -11,16 +11,16 @@ import java.util.List;
 @Setter
 public class BookSearchResponse {
     private boolean single;
-    private UnifiedBookDto singleResult;
+    private Object singleResult;
 
     private List<Book> localResults;
     private List<GoogleBookDto> googleBookDto;
     private List<OpenLibraryBookDto> openLibraryResults;
     private List<AmazonBookDto> amazonBookResults;
 
-    public BookSearchResponse(UnifiedBookDto singleResult) {
+    public BookSearchResponse(Book onlyLocalHit) {
         this.single = true;
-        this.singleResult = singleResult;
+        this.singleResult = onlyLocalHit;
     }
 
     public BookSearchResponse(List<Book> localResults,

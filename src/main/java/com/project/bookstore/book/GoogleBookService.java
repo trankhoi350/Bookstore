@@ -67,38 +67,29 @@ public class GoogleBookService {
 
                 BigDecimal price = pricingService.determinePrice(publicationYear, pageCount, genre);
 
+                // ISBN extraction
                 String isbn = "N/A";
-                JSONArray industryIds = volumeInfo.optJSONArray("industryIdentifiers");
-                if (industryIds != null) {
-                    for (int j = 0; j < industryIds.length(); j++) {
-                        JSONObject idObj = industryIds.getJSONObject(j);
+                JSONArray ids = volumeInfo.optJSONArray("industryIdentifiers");
+                if (ids != null) {
+                    for (int j = 0; j < ids.length(); j++) {
+                        JSONObject idObj = ids.getJSONObject(j);
                         if ("ISBN_13".equals(idObj.optString("type"))) {
-                            isbn = idObj.optString("identifier", isbn);
+                            isbn = idObj.optString("identifier");
                             break;
                         }
                     }
                 }
-                if (volumeInfo.has("industryIdentifiers")) {
-                    JSONArray identifiers = volumeInfo.getJSONArray("industryIdentifiers");
-                    for (int j = 0; j < identifiers.length(); j++) {
-                        JSONObject identifier = identifiers.getJSONObject(j);
-                        String type = identifier.optString("type");
-                        String value = identifier.optString("identifier");
-                        if ("ISBN_13".equals(type)) {
-                            isbn = value;
-                            break;
-                        }
-                        else if ("ISBN_10".equals(type)){
-                            isbn = value;
-                        }
-                    }
-                }
+
+                // imageLinks
                 String imageUrl = null;
-                JSONObject imageLinks = volumeInfo.optJSONObject("imageLinks");
-                if (imageLinks != null) {
-                    imageUrl = imageLinks.optString("thumbnail", imageLinks.optString("smallThumbnail", null));
+                JSONObject imgLinks = volumeInfo.optJSONObject("imageLinks");
+                if (imgLinks != null) {
+                    imageUrl = imgLinks.optString("thumbnail", null);
+                    if (imageUrl == null)
+                        imageUrl = imgLinks.optString("smallThumbnail", null);
                 }
                 if (imageUrl == null) {
+                    // fallback placeholder
                     imageUrl = "/placeholder.jpg";
                 }
                 results.add(new GoogleBookDto(googleBookId, title, author, isbn, publicationYear, pageCount, genre, price, imageUrl));
