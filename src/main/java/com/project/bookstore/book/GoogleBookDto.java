@@ -31,5 +31,4 @@ public class GoogleBookDto {
         this.price = price;
         this.imageUrl = imageUrl;
     }
-
 }

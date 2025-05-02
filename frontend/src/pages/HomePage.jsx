@@ -128,48 +128,6 @@ const HomePage = () => {
         }
     };
 
-    const handleAddToCart = async (books) => {
-        const token = localStorage.getItem("token");
-        console.log("addToCart jwt: ", token);
-        if (!token) {
-            alert("You must be logged in to add to cart");
-            return;
-        }
-
-        if (!token || token.split(".").length !== 3) {
-            alert("You must be logged in (or your session expired).");
-            setLoading(false);
-            return;
-        }
-        const payload = {
-            quantity: 1,
-            itemType: "BOOK",
-            itemSource: books.source,
-            bookId: books.source === "INTERNAL" ? books.id : undefined,
-            externalId: books.source !== "INTERNAL" ? books.id : undefined,
-            title: books.title,
-            author: books.author,
-            price: books.price,
-            isbn: books.isbn,
-            imageUrl: books.imageUrl
-        };
-
-        try {
-            const res = await fetch("http://localhost:8080/api/v1/cart/add", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            alert("Added to cart!");
-        } catch (e) {
-            console.error("addToCart failed:", e)
-            alert("Could not add to cart. See console for details")
-        }
-    }
 
     return (
         <div className="bookhub-container">
@@ -231,7 +189,8 @@ const HomePage = () => {
                     <div className="welcome-section">
                         <h2 className="welcome-title">Welcome to BookHub</h2>
                         <p className="welcome-text">
-                            Your digital gateway to a world of books. Use the search bar above to discover your next great read.
+                            Your digital gateway to a world of books. Use the search bar above to discover your next
+                            great read.
                         </p>
                         <p className="welcome-subtext">
                             Our collection features thousands of titles across all genres. Start your search to explore!
@@ -242,11 +201,13 @@ const HomePage = () => {
                     <div className="features-grid">
                         <div className="feature-card">
                             <h3 className="feature-title">Discover</h3>
-                            <p className="feature-text">Find new releases and bestsellers with our curated collections</p>
+                            <p className="feature-text">Find new releases and bestsellers with our curated
+                                collections</p>
                         </div>
                         <div className="feature-card">
                             <h3 className="feature-title">Connect</h3>
-                            <p className="feature-text">Join reading groups and share reviews with fellow book lovers</p>
+                            <p className="feature-text">Join reading groups and share reviews with fellow book
+                                lovers</p>
                         </div>
                         <div className="feature-card">
                             <h3 className="feature-title">Save</h3>
@@ -255,40 +216,41 @@ const HomePage = () => {
                     </div>
                     {/* Feedback */}
                     {loading && <p>Loading…</p>}
-                    {error && <p style={{ color: "red" }}>{error}</p>}
+                    {error && <p style={{color: "red"}}>{error}</p>}
 
-                    {/* Results */}
+
                     <div className="results-grid">
                         {books.length === 0 && !loading && <p>No results</p>}
-                        {books.map((b) => (
-                            <div key={b.id} className="book-card">
-                                <Link key={`${b.source}-${b.id}`}
-                                      to={`/book/${b.source}/${encodeURIComponent(b.id)}`}
-                                      state={{ book: b }}
-                                      className="book-card">
-                                <img
-                                    src={b.imageUrl.startsWith("http") ? b.imageUrl : `${API_BASE}${b.imageUrl}`}
-                                    alt={b.title}
-                                    className="book-cover"
-                                    onError={e => {
-                                        e.currentTarget.onerror = null;
-                                        e.currentTarget.src = "/placeholder.jpg";
-                                    }}
-                                />
-
-                                <h3>{b.title}</h3>
-                                <p><strong>Author:</strong> {b.author}</p>
-                                {b.price != null && <p><strong>Price:</strong> {b.price}</p>}
-                                {b.isbn && <p><strong>ISBN:</strong> {b.isbn}</p>}
-                                <button className="add-to-cart-button" onClick={() => handleAddToCart(b)}>Add to Cart</button>
+                        {books.map(b => (
+                            <div key={`${b.source}-${b.id}`} className="book-card">
+                                <Link
+                                    to={`/book/${b.source}/${encodeURIComponent(b.id)}`}
+                                    state={{book: b}}
+                                    className="book-link"
+                                >
+                                    <img
+                                        src={b.imageUrl.startsWith("http")
+                                            ? b.imageUrl
+                                            : `${API_BASE}${b.imageUrl}`}
+                                        alt={b.title}
+                                        className="book-cover"
+                                        onError={e=> {
+                                            e.currentTarget.onerror = null;
+                                            e.currentTarget.src = "/placeholder.jpg";
+                                        }}
+                                    />
+                                    <h3 className="book-title">{b.title}</h3>
                                 </Link>
+                                <p className="book-author"><strong>Author:</strong> {b.author}</p>
+                                {b.price != null && <p><strong>Price:</strong> ${b.price}</p>}
+                                {b.isbn   && <p><strong>ISBN:</strong> {b.isbn}</p>}
                             </div>
                         ))}
                     </div>
                 </div>
             </main>
 
-            {/* Footer */}
+                        {/* Footer */}
             <footer className="bookhub-footer">
                 <div className="footer-content">
                     <div className="footer-main">
