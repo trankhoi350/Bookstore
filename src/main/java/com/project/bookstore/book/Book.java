@@ -12,32 +12,24 @@ import java.time.LocalDate;
 @Getter
 @Setter
 public class Book {
-    @Getter
-    @Setter
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Getter
-    @Setter
+
     private String title;
-    @Getter
-    @Setter
+
     private String author;
-    @Getter
     private String isbn;
-    @Getter
-    @Setter
+
     private BigDecimal price;
 
     @Column(length = 2000)
     private String description;
-    @Getter
-    @Setter
+
     private LocalDate publishDate;
 
-    @Setter
-    @Getter
+
     private String imageUrl;
 
     public Book() {

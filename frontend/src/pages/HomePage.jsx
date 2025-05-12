@@ -128,48 +128,6 @@ const HomePage = () => {
         }
     };
 
-    const handleAddToCart = async (books) => {
-        const token = localStorage.getItem("token");
-        console.log("addToCart jwt: ", token);
-        if (!token) {
-            alert("You must be logged in to add to cart");
-            return;
-        }
-
-        if (!token || token.split(".").length !== 3) {
-            alert("You must be logged in (or your session expired).");
-            setLoading(false);
-            return;
-        }
-        const payload = {
-            quantity: 1,
-            itemType: "BOOK",
-            itemSource: books.source,
-            bookId: books.source === "INTERNAL" ? books.id : undefined,
-            externalId: books.source !== "INTERNAL" ? books.id : undefined,
-            title: books.title,
-            author: books.author,
-            price: books.price,
-            isbn: books.isbn,
-            imageUrl: books.imageUrl
-        };
-
-        try {
-            const res = await fetch("http://localhost:8080/api/v1/cart/add", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            alert("Added to cart!");
-        } catch (e) {
-            console.error("addToCart failed:", e)
-            alert("Could not add to cart. See console for details")
-        }
-    }
 
     return (
         <div className="bookhub-container">
@@ -207,15 +165,20 @@ const HomePage = () => {
                                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
                             </svg>
                         </button>
-                        <button className="icon-button">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <Link to="/cart" className="icon-button" title="View Cart">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                 strokeLinejoin="round">
                                 <circle cx="9" cy="21" r="1"></circle>
                                 <circle cx="20" cy="21" r="1"></circle>
                                 <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
                             </svg>
-                        </button>
+                        </Link>
+
                         <button className="icon-button">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                 strokeLinejoin="round">
                                 <line x1="3" y1="12" x2="21" y2="12"></line>
                                 <line x1="3" y1="6" x2="21" y2="6"></line>
                                 <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -231,7 +194,8 @@ const HomePage = () => {
                     <div className="welcome-section">
                         <h2 className="welcome-title">Welcome to BookHub</h2>
                         <p className="welcome-text">
-                            Your digital gateway to a world of books. Use the search bar above to discover your next great read.
+                            Your digital gateway to a world of books. Use the search bar above to discover your next
+                            great read.
                         </p>
                         <p className="welcome-subtext">
                             Our collection features thousands of titles across all genres. Start your search to explore!
@@ -242,11 +206,13 @@ const HomePage = () => {
                     <div className="features-grid">
                         <div className="feature-card">
                             <h3 className="feature-title">Discover</h3>
-                            <p className="feature-text">Find new releases and bestsellers with our curated collections</p>
+                            <p className="feature-text">Find new releases and bestsellers with our curated
+                                collections</p>
                         </div>
                         <div className="feature-card">
                             <h3 className="feature-title">Connect</h3>
-                            <p className="feature-text">Join reading groups and share reviews with fellow book lovers</p>
+                            <p className="feature-text">Join reading groups and share reviews with fellow book
+                                lovers</p>
                         </div>
                         <div className="feature-card">
                             <h3 className="feature-title">Save</h3>
@@ -255,33 +221,34 @@ const HomePage = () => {
                     </div>
                     {/* Feedback */}
                     {loading && <p>Loading…</p>}
-                    {error && <p style={{ color: "red" }}>{error}</p>}
+                    {error && <p style={{color: "red"}}>{error}</p>}
 
-                    {/* Results */}
+
                     <div className="results-grid">
                         {books.length === 0 && !loading && <p>No results</p>}
-                        {books.map((b) => (
-                            <div key={b.id} className="book-card">
-                                <Link key={`${b.source}-${b.id}`}
-                                      to={`/book/${b.source}/${encodeURIComponent(b.id)}`}
-                                      state={{ book: b }}
-                                      className="book-card">
-                                <img
-                                    src={b.imageUrl.startsWith("http") ? b.imageUrl : `${API_BASE}${b.imageUrl}`}
-                                    alt={b.title}
-                                    className="book-cover"
-                                    onError={e => {
-                                        e.currentTarget.onerror = null;
-                                        e.currentTarget.src = "/placeholder.jpg";
-                                    }}
-                                />
-
-                                <h3>{b.title}</h3>
-                                <p><strong>Author:</strong> {b.author}</p>
-                                {b.price != null && <p><strong>Price:</strong> {b.price}</p>}
-                                {b.isbn && <p><strong>ISBN:</strong> {b.isbn}</p>}
-                                <button className="add-to-cart-button" onClick={() => handleAddToCart(b)}>Add to Cart</button>
+                        {books.map(b => (
+                            <div key={`${b.source}-${b.id}`} className="book-card">
+                                <Link
+                                    to={`/book/${b.source}/${encodeURIComponent(b.id)}`}
+                                    state={{book: b}}
+                                    className="book-link"
+                                >
+                                    <img
+                                        src={b.imageUrl.startsWith("http")
+                                            ? b.imageUrl
+                                            : `${API_BASE}${b.imageUrl}`}
+                                        alt={b.title}
+                                        className="book-cover"
+                                        onError={e=> {
+                                            e.currentTarget.onerror = null;
+                                            e.currentTarget.src = "/placeholder.jpg";
+                                        }}
+                                    />
+                                    <h3 className="book-title">{b.title}</h3>
                                 </Link>
+                                <p className="book-info"><strong>Author:</strong> {b.author}</p>
+                                {b.price != null && <p className="book-info"><strong>Price:</strong> ${b.price}</p>}
+                                {b.isbn   && <p className="book-info"><strong>ISBN:</strong> {b.isbn}</p>}
                             </div>
                         ))}
                     </div>

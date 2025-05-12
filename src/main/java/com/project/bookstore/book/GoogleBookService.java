@@ -1,5 +1,6 @@
 package com.project.bookstore.book;
 
+import com.mashape.unirest.http.Unirest;
 import com.project.bookstore.cart.PricingService;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -16,6 +17,7 @@ import java.util.List;
 public class GoogleBookService {
     private final RestTemplate restTemplate = new RestTemplate();
     private static final String GOOGLE_BOOKS_API = "https://www.googleapis.com/books/v1/volumes?q=";
+    private static final String GOOGLE_VOLUME_URL = "https://www.googleapis.com/books/v1/volumes/";
     private final PricingService pricingService;
 
     public GoogleBookService(PricingService pricingService) {
@@ -99,5 +101,34 @@ public class GoogleBookService {
             e.printStackTrace();
             return List.of();
         }
+    }
+
+    public String findCoverUrlById(String volumeId) {
+        try {
+            // call Google Books volumes endpoint
+            String json = Unirest
+                    .get(GOOGLE_VOLUME_URL + volumeId)
+                    .asString()
+                    .getBody();
+
+            JSONObject root = new JSONObject(json);
+            JSONObject info = root.optJSONObject("volumeInfo");
+            if (info != null) {
+                JSONObject imgs = info.optJSONObject("imageLinks");
+                if (imgs != null) {
+                    // try extraLarge → large → thumbnail
+                    String url = imgs.optString("extraLarge", null);
+                    if (url == null) url = imgs.optString("large", null);
+                    if (url == null) url = imgs.optString("thumbnail", null);
+                    if (url != null) {
+                        // ensure HTTPS
+                        return url.replaceFirst("^http:", "https:");
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // silently swallow; we'll fall back elsewhere
+        }
+        return null;
     }
 }

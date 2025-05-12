@@ -14,7 +14,7 @@ public class BookSearchResponse {
     private Object singleResult;
 
     private List<Book> localResults;
-    private List<GoogleBookDto> googleBookDto;
+    private List<GoogleBookDto> googleBookResults;
     private List<OpenLibraryBookDto> openLibraryResults;
     private List<AmazonBookDto> amazonBookResults;
 
@@ -24,12 +24,12 @@ public class BookSearchResponse {
     }
 
     public BookSearchResponse(List<Book> localResults,
-                              List<GoogleBookDto> googleBookDto,
+                              List<GoogleBookDto> googleBookResults,
                               List<OpenLibraryBookDto> openLibraryResults,
                               List<AmazonBookDto> amazonBookResults) {
         this.single = false;
         this.localResults = localResults;
-        this.googleBookDto = googleBookDto;
+        this.googleBookResults = googleBookResults;
         this.openLibraryResults = openLibraryResults;
         this.amazonBookResults = amazonBookResults;
     }

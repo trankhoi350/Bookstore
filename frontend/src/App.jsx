@@ -4,6 +4,7 @@ import Register from "./pages/Register.jsx";
 import "./index.css"
 import HomePage from "./pages/HomePage.jsx";
 import BookDetail from "./pages/BookDetail.jsx";
+import CartPage from "./pages/CartPage.jsx";
 
 const App = () => {
     return (
@@ -12,6 +13,7 @@ const App = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/home" element={<HomePage />} />
             <Route path="/book/:source/:id" element={<BookDetail />} />
+            <Route path="/cart" element={<CartPage />} />
         </Routes>
     );
 };

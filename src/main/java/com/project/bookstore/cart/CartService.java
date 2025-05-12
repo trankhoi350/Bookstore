@@ -2,8 +2,7 @@ package com.project.bookstore.cart;
 
 import com.project.bookstore.article.Article;
 import com.project.bookstore.article.ArticleRepository;
-import com.project.bookstore.book.Book;
-import com.project.bookstore.book.BookRepository;
+import com.project.bookstore.book.*;
 import com.project.bookstore.user.User;
 import com.project.bookstore.user.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,13 +15,19 @@ public class CartService {
     private final UserRepository userRepository;
     private final ArticleRepository articleRepository;
     private final BookRepository bookRepository;
+    private final GoogleBookService googleBookService;
+    private final OpenLibraryService openLibraryService;
+    private final AmazonService amazonService;
 
     @Autowired
-    public CartService(CartRepository cartRepository, UserRepository userRepository, ArticleRepository articleRepository, BookRepository bookRepository) {
+    public CartService(CartRepository cartRepository, UserRepository userRepository, ArticleRepository articleRepository, BookRepository bookRepository, GoogleBookService googleBookService, OpenLibraryService openLibraryService, AmazonService amazonService) {
         this.cartRepository = cartRepository;
         this.userRepository = userRepository;
         this.articleRepository = articleRepository;
         this.bookRepository = bookRepository;
+        this.googleBookService = googleBookService;
+        this.openLibraryService = openLibraryService;
+        this.amazonService = amazonService;
     }
 
     public Cart getUserCart(String email) {
@@ -49,6 +54,8 @@ public class CartService {
         item.setGenre(request.getGenre());
         item.setIsbn(request.getIsbn());
         item.setPublicationYear(request.getPublicationYear());
+        item.setPrice(request.getPrice());
+        item.setImageUrl(request.getImageUrl());
 
         if (request.getItemSource() == ItemSource.INTERNAL) {
             if (request.getItemType() == ItemType.BOOK) {
@@ -64,6 +71,24 @@ public class CartService {
             item.setItemSource(ItemSource.EXTERNAL);
             item.setExternalId(request.getExternalId());
         }
+
+        String cover = request.getImageUrl();
+        if ((cover == null || cover.equals("/placeholder.jpg"))
+                && request.getItemSource() == ItemSource.EXTERNAL) {
+
+            switch (request.getItemType()) {
+                case BOOK:
+                    // try Google first
+                    cover = googleBookService.findCoverUrlById(request.getExternalId());
+                    if (cover == null) cover = openLibraryService.findCoverUrlById(request.getExternalId());
+                    if (cover == null) cover = amazonService.findCoverUrlById(request.getExternalId());
+                    break;
+                default:
+                    break;
+            }
+        }
+        if (cover == null) cover = "/placeholder.jpg";
+        item.setImageUrl(cover);
         cart.getItems().add(item);
         return cartRepository.save(cart);
     }

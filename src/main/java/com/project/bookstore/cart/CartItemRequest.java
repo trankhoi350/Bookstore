@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -27,6 +26,7 @@ public class CartItemRequest {
     private String description;
     private String publicationYear;
     private BigDecimal price;
+    private String imageUrl;
     private String genre;
 
     //Define the type

@@ -121,4 +121,19 @@ public class OpenLibraryService {
         }
         return genre;
     }
+
+    public String findCoverUrlById(String olidOrIsbn) {
+        if (olidOrIsbn == null) return null;
+
+        // if it looks like an OLID (e.g. OL123M), use /b/olid/
+        if (olidOrIsbn.toUpperCase().startsWith("OL")) {
+            return "https://covers.openlibrary.org/b/olid/" +
+                    olidOrIsbn +
+                    "-L.jpg";
+        }
+        // otherwise treat it as ISBN
+        return "https://covers.openlibrary.org/b/isbn/" +
+                olidOrIsbn +
+                "-L.jpg";
+    }
 }
