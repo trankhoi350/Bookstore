@@ -26,7 +26,7 @@ public class GoogleBookService {
 
     public List<GoogleBookDto> searchGoogleBooks(String query) {
         try {
-            String modifiedQuery = "intitle:" + query;
+            String modifiedQuery = "intitle:\"" + query + "\"";
             String requestUrl = GOOGLE_BOOKS_API + modifiedQuery.replace(" ", "+") + "&maxResults=10";
 
             //Call the API
@@ -53,8 +53,9 @@ public class GoogleBookService {
                 JSONArray authors = volumeInfo.optJSONArray("authors");
                 String author = (authors != null && !authors.isEmpty()) ? authors.getString(0) : "Unknown";
 
+                Integer publicationYear = volumeInfo.has("publishedDate")
+                        ? pricingService.extractYear(volumeInfo.optString("publishedDate")) : null;
 
-                Integer publicationYear = volumeInfo.has("publishedDate") ? pricingService.extractYear(volumeInfo.optString("publishedDate")) : null;
                 Integer pageCount = volumeInfo.has("pageCount") ? volumeInfo.optInt("pageCount") : null;
                 //String genre = volumeInfo.has("categories") ? volumeInfo.optJSONArray("categories").optString(0, "General") : "General";
 
@@ -67,19 +68,26 @@ public class GoogleBookService {
                 }
                 String genre = categories.isEmpty() ? "General" : String.join(", ", categories);
 
+
                 BigDecimal price = pricingService.determinePrice(publicationYear, pageCount, genre);
+                if (price.compareTo(BigDecimal.ZERO) == 0) {
+                    price = new BigDecimal("29.99"); // Default price if 0
+                }
 
                 // ISBN extraction
                 String isbn = "N/A";
                 JSONArray ids = volumeInfo.optJSONArray("industryIdentifiers");
-                if (ids != null) {
+                if (ids != null && !ids.isEmpty()) {
                     for (int j = 0; j < ids.length(); j++) {
                         JSONObject idObj = ids.getJSONObject(j);
                         if ("ISBN_13".equals(idObj.optString("type"))) {
-                            isbn = idObj.optString("identifier");
+                            isbn = idObj.optString("identifier", "N/A");
+                            System.out.println("Found ISBN_13 for " + title + ": " + isbn);
                             break;
                         }
                     }
+                } else {
+                    System.out.println("No industryIdentifiers found for " + title);
                 }
 
                 // imageLinks

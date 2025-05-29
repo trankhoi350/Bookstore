@@ -24,4 +24,8 @@ public class AmazonBookDto {
         this.price = price;
         this.productUrl = productUrl;
     }
+
+    public AmazonBookDto() {
+
+    }
 }

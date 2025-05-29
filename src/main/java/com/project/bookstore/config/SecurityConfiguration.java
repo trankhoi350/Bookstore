@@ -60,8 +60,8 @@ public class SecurityConfiguration {
 
                         .requestMatchers("/api/bookstore/google", "/api/bookstore/openlibrary", "/api/bookstore/amazon").permitAll()
 
-                        .requestMatchers("/api/bookstore/search").permitAll()
-
+                        .requestMatchers(HttpMethod.GET, "/api/bookstore/search").permitAll()
+                        .requestMatchers("/error").permitAll()
 
                         .requestMatchers("/api/bookstore/**").authenticated()
 

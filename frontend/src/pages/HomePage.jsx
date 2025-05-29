@@ -10,6 +10,8 @@ const HomePage = () => {
     const [books, setBooks] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [mostSearched, setMostSearched] = useState([]);
+    const [showDropdown, setShowDropdown] = useState(false);
 
     useEffect(() => {
         const token     = localStorage.getItem("token");
@@ -24,108 +26,176 @@ const HomePage = () => {
         }
     }, []);
 
+    useEffect(() => {
+        // Fetch most-searched books on component mount
+        const fetchMostSearched = async () => {
+            try {
+                const res = await fetch(`${API_BASE}/api/bookstore/most-searched`, {
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${localStorage.getItem("token")}`
+                    }
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                console.log("Most searched books:", data);
+                setMostSearched(data);
+            } catch (err) {
+                console.error("Failed to fetch most-searched books:", err);
+                setMostSearched([]); // Ensure state is set even on error
+            }
+        };
+        fetchMostSearched();
+    }, []);
+
+
+
 
     const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
+        setShowDropdown(true);
+        console.log("showDropdown set to true");
     };
 
     const handleSearchSubmit = async (e) => {
         e.preventDefault();
         if (!searchQuery.trim()) return;
+        setBooks([]); // Clear previous searched results
         setLoading(true);
         setError(null);
+        setShowDropdown(false);
 
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch(`http://localhost:8080/api/bookstore/search?query=${encodeURIComponent(searchQuery)}`, {
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
+            console.log("Sending request to:", `http://localhost:8080/api/bookstore/search?query=${encodeURIComponent(searchQuery)}`);
+            console.log("Authorization token:", token);
+            const res = await fetch(
+                `http://localhost:8080/api/bookstore/search?query=${encodeURIComponent(searchQuery)}`,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`,
+                    },
                 }
+            );
+            console.log("Response status:", res.status);
+            if (res.status === 403) {
+                setError("Access denied (403). Your session may have expired. Please log in again.");
+                localStorage.removeItem("token");
+                setLoading(false);
+                return;
+            }
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            console.log("Backend response:", data);
+
+            // 1) If the backend told us “single,” just show that one.
+            if (data.single) {
+                setBooks([
+                    {
+                        ...data.singleResult,
+                        source: "INTERNAL",
+                    },
+                ]);
+                return;
+            }
+
+            // 2) Pull out local results first.
+            const local = (data.localResults || []).map((b) => ({
+                ...b,
+                source: "INTERNAL",
+                isbn: b.isbn || "N/A",
+                price: b.price != null ? b.price : 29.99 // Default price
+            }));
+
+            // 3) Check for an exact-title match in that local list.
+            const exactLocal = local.find(
+                (b) => b.title && b.title.trim().toLowerCase() === searchQuery.trim().toLowerCase()
+            );
+            if (exactLocal) {
+                setBooks([exactLocal]);
+                return;
+            }
+
+            // 4) Merge in the external hits
+            const external = [
+                ...(data.googleBookResults || []).map((b) => ({ ...b, source: "GOOGLE", isbn: b.isbn || "N/A", price: b.price != null ? b.price : 29.99 })),
+                ...(data.openLibraryResults || []).map((b) => ({ ...b, source: "OPENLIBRARY", isbn: b.isbn || "N/A", price: b.price != null ? b.price : 29.99 })),
+                ...(data.amazonBookResults || []).map((b) => ({ ...b, source: "AMAZON", isbn: b.isbn || "N/A", price: b.price != null ? b.price : 29.99 })),
+            ];
+
+            // 5) Normalize query for startsWith and exact match checks
+            const normalizedQuery = searchQuery.toLowerCase().replaceAll("[^a-z0-9 ]", "");
+
+            // 6) Reconstruct unified list, prioritizing startsWith books with sub-ordering
+            const allBooks = [...local, ...external];
+
+            // Split into startsWithBooks and containsBooks
+            const startsWithBooks = allBooks.filter((book) => {
+                const title = book.title ? book.title.toLowerCase().replaceAll("[^a-z0-9 ]", "") : "";
+                return title.startsWith(normalizedQuery) || title.startsWith(normalizedQuery + " ");
             });
 
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const data = await response.json();
+            // Sort startsWithBooks: exact matches (score 115) before other startsWith (score 95)
+            startsWithBooks.sort((a, b) => {
+                const titleA = a.title ? a.title.toLowerCase().replaceAll("[^a-z0-9 ]", "") : "";
+                const titleB = b.title ? b.title.toLowerCase().replaceAll("[^a-z0-9 ]", "") : "";
+                const aExactMatch = titleA === normalizedQuery;
+                const bExactMatch = titleB === normalizedQuery;
+                if (aExactMatch && !bExactMatch) return -1; // Prioritize exact matches (score 115)
+                if (!aExactMatch && bExactMatch) return 1;
+                return 0; // Maintain relative order for other startsWith books (score 95)
+            });
 
-            if (data.single) {
-                setBooks([data.singleResult]);
-            } else {
-                const combined = [
-                    ...(data.localResults || []).map(b => ({ ...b, source: "INTERNAL" })),
-                    ...(data.googleBookDto || []).map(b => ({ ...b, source: "GOOGLE" })),
-                    ...(data.openLibraryResults || []).map(b => ({ ...b, source: "OPENLIBRARY" })),
-                    ...(data.amazonResult || []).map(b => ({ ...b, source: "AMAZON" })),
-                ];
+            const containsBooks = allBooks.filter((book) => {
+                const title = book.title ? book.title.toLowerCase().replaceAll("[^a-z0-9 ]", "") : "";
+                return !title.startsWith(normalizedQuery) && !title.startsWith(normalizedQuery + " ") && title.includes(normalizedQuery);
+            });
 
-                // Log what's coming from the API
-                console.log("Combined results before deduplication:", combined.length);
+            const unifiedList = [...startsWithBooks, ...containsBooks];
 
-                // More lenient deduplication approach
-                const uniqueBooks = [];
-                const seen = new Map(); // Use Map to track existing books with their similarity scores
+            // 7) Deduplicate while preserving the order
+            const seen = new Set();
+            const unique = [];
+            for (const book of unifiedList) {
+                const title = book.title ? book.title.toString() : "";
+                const author = book.author ? book.author.toString() : "";
+                if (!book.title) continue;
 
-                for (const book of combined) {
-                    if (!book.title || !book.author) continue;
+                // ISBN-based dedupe
+                const isbn = (book.isbn || "").replace(/[^0-9Xx]/g, "");
+                if (isbn && seen.has(`ISBN:${isbn}`)) continue;
+                if (isbn) seen.add(`ISBN:${isbn}`);
 
-                    // Create a book signature that considers only *exact* matches as duplicates
-                    const exactIsbn = (book.isbn || "").replace(/-/g, "").trim();
+                // Fallback title-author signature
+                const sig = `${book.title.trim().toLowerCase()}|${(book.author || "").trim().toLowerCase()}`;
+                if (seen.has(sig)) continue;
+                seen.add(sig);
 
-                    // Check for ISBN matches first (highest confidence)
-                    if (exactIsbn && exactIsbn !== "n/a" && exactIsbn !== "N/A") {
-                        if ([...seen.values()].some(b =>
-                            (b.isbn || "").replace(/-/g, "").trim() === exactIsbn
-                        )) {
-                            continue; // Skip this duplicate
-                        }
-                    }
-
-                    // Extract core title and language information
-                    const normalizedTitle = book.title.toLowerCase().trim();
-                    const normalizedAuthor = book.author.toLowerCase().trim();
-
-                    // Parse language information more carefully
-                    const techMatch = normalizedTitle.match(/\b(in|with)\s+([a-z#][\w+.#]*)\b/i);
-                    const tech = techMatch ? techMatch[2].toLowerCase() : "";
-
-                    // Check for edition information
-                    const editionMatch = normalizedTitle.match(/\b(\d+[a-z]{0,2}|second|third|fourth|fifth)\s+edition\b/i);
-                    const edition = editionMatch ? editionMatch[0].toLowerCase() : "";
-
-                    // Extract the base title without tech or edition qualifiers
-                    const baseTitle = normalizedTitle
-                        .replace(/\s+(in|with)\s+[a-z#][\w+.#]*/gi, "")
-                        .replace(/\s+-\s+.*edition/gi, "")
-                        .replace(/\s+[\w\s]*edition/gi, "")
-                        .replace(/\s*-\s*a\s+handbook\s+of.*$/i, "")
-                        .replace(/\s*:\s*a\s+handbook\s+of.*$/i, "")
-                        .replace(/^\s*the\s+art\s+of\s+/i, "")
-                        .trim();
-
-                    // Create a "signature" for the book that distinguishes tech variations
-                    const signature = `${baseTitle}|${tech}|${edition}|${normalizedAuthor}`;
-
-                    // Check if we've seen this exact signature before
-                    if (seen.has(signature)) continue;
-
-                    // Consider this a unique book based on our criteria
-                    seen.set(signature, book);
-                    uniqueBooks.push(book);
-                }
-
-                console.log("Unique books after deduplication:", uniqueBooks.length);
-                setBooks(uniqueBooks);
-                localStorage.setItem("lastQuery", searchQuery);
-                localStorage.setItem("lastBooks", JSON.stringify(uniqueBooks));
-                localStorage.setItem("lastToken", token);
+                unique.push(book);
             }
-        } catch (error) {
-            console.error("Search error:", error);
+
+            // 8) Set books without additional sorting
+            console.log("Unique books:", unique);
+            console.log("Sorted unique books:", unique.map(b => b.title));
+            setBooks(unique);
+            localStorage.setItem("lastQuery", searchQuery);
+            localStorage.setItem("lastBooks", JSON.stringify(unique));
+            localStorage.setItem("lastToken", token);
+        } catch (err) {
+            console.error("Search error:", err);
             setError("Failed to fetch books. Please try again.");
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleSuggestionClick = (suggestion) => {
+        setSearchQuery(suggestion);
+        setShowDropdown(false);
+        handleSearchSubmit({ preventDefault: () => {} }); // Trigger search
     };
 
 
@@ -138,7 +208,7 @@ const HomePage = () => {
                     <h1 className="bookhub-logo">BookHub</h1>
 
                     {/* Primary Search Bar */}
-                    <div className="search-container">
+                    <div className="search-container" style={{ position: "relative" }}>
                         <form onSubmit={handleSearchSubmit} className="search-form">
                             <input
                                 type="text"
@@ -146,6 +216,8 @@ const HomePage = () => {
                                 className="search-input"
                                 value={searchQuery}
                                 onChange={handleSearchChange}
+                                onFocus={() => setShowDropdown(true)}
+                                onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
                             />
                             <button type="submit" className="search-button">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -154,6 +226,43 @@ const HomePage = () => {
                                 </svg>
                             </button>
                         </form>
+                        {showDropdown && (
+                            <ul className="search-dropdown" style={{
+                                position: "absolute",
+                                top: "100%",
+                                left: 0,
+                                right: 0,
+                                backgroundColor: "white",
+                                border: "1px solid #ddd",
+                                borderRadius: "4px",
+                                boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+                                listStyle: "none",
+                                padding: 0,
+                                margin: 0,
+                                zIndex: 10
+                            }}>
+                                {mostSearched.length > 0 ? (
+                                    mostSearched.map((suggestion, index) => (
+                                        <li
+                                            key={index}
+                                            onClick={() => handleSuggestionClick(suggestion)}
+                                            style={{
+                                                padding: "8px 12px",
+                                                cursor: "pointer",
+                                                borderBottom: index < mostSearched.length - 1 ? "1px solid #ddd" : "none"
+                                            }}
+                                            onMouseDown={(e) => e.preventDefault()}
+                                        >
+                                            {suggestion}
+                                        </li>
+                                    ))
+                                ) : (
+                                    <li style={{ padding: "8px 12px", color: "#888" }}>
+                                        No search history available
+                                    </li>
+                                )}
+                            </ul>
+                        )}
                     </div>
 
 
@@ -234,12 +343,13 @@ const HomePage = () => {
                                     className="book-link"
                                 >
                                     <img
-                                        src={b.imageUrl.startsWith("http")
+                                        src={b.imageUrl && b.imageUrl.startsWith("http")
                                             ? b.imageUrl
-                                            : `${API_BASE}${b.imageUrl}`}
-                                        alt={b.title}
+                                            : b.imageUrl
+                                                ? `${API_BASE}${b.imageUrl}` : "/placeholder.jpg"}
+                                        alt={b.title || "No title"}
                                         className="book-cover"
-                                        onError={e=> {
+                                        onError={e => {
                                             e.currentTarget.onerror = null;
                                             e.currentTarget.src = "/placeholder.jpg";
                                         }}
@@ -247,8 +357,9 @@ const HomePage = () => {
                                     <h3 className="book-title">{b.title}</h3>
                                 </Link>
                                 <p className="book-info"><strong>Author:</strong> {b.author}</p>
-                                {b.price != null && <p className="book-info"><strong>Price:</strong> ${b.price}</p>}
-                                {b.isbn   && <p className="book-info"><strong>ISBN:</strong> {b.isbn}</p>}
+                                <p className="book-info"><strong>Price:</strong> ${b.price != null ? b.price : "N/A"}
+                                </p>
+                                <p className="book-info"><strong>ISBN:</strong> {b.isbn || "N/A"}</p>
                             </div>
                         ))}
                     </div>

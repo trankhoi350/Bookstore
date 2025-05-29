@@ -39,7 +39,7 @@ public class Book {
         this.id = id;
     }
 
-    public Book(Long id, String title, String author, String isbn, BigDecimal price, String description, LocalDate publishDate, String imageUrl) {
+    public Book(Long id, String title, String author, String isbn,  BigDecimal price, String description, LocalDate publishDate, String imageUrl) {
         this.id = id;
         this.title = title;
         this.author = author;

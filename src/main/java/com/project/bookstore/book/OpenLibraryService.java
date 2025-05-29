@@ -76,7 +76,7 @@ public class OpenLibraryService {
                         }
 
                         String isbn = "N/A";
-                        if (doc.has("isbn")) {  
+                        if (doc.has("isbn")) {
                             JSONArray isbnArray = doc.getJSONArray("isbn");
                             if (!isbnArray.isEmpty()) {
                                 isbn = isbnArray.optString(0);

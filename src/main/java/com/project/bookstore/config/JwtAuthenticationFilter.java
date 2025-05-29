@@ -29,10 +29,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        System.out.println(">>> [JWT] "
-                + request.getMethod() + " " + request.getServletPath());
+        System.out.println(">>> [JWT] " + request.getMethod() + " " + request.getServletPath());
 
-        // 2) Log the raw header
+        // Skip filtering if shouldNotFilter returns true
+        if (shouldNotFilter(request)) {
+            System.out.println(">>> [JWT] Skipping JWT processing for this request");
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // Log the raw header
         String authHeader = request.getHeader("Authorization");
         System.out.println(">>> [JWT] Authorization header = " + authHeader);
 

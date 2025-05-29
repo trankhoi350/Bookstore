@@ -6,14 +6,13 @@ const BookDetail = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
-    // from HomePage or freshly fetched
-    const [book,    setBook]    = useState(location.state?.book || null);
+    const [book, setBook] = useState(location.state?.book || null);
     const [loading, setLoading] = useState(!book);
-    const [error,   setError]   = useState("");
+    const [error, setError] = useState("");
 
-    // New state for quantity & loading
-    const [qty,     setQty]     = useState(1);
-    const [adding,  setAdding]  = useState(false);
+    const [qty, setQty] = useState(1);
+    const [adding, setAdding] = useState(false);
+    const [updating, setUpdating] = useState(false);
 
     useEffect(() => {
         if (book) return;
@@ -31,24 +30,41 @@ const BookDetail = () => {
             })
             .then(data => {
                 const combined = [
-                    ...(data.localResults     || []).map(b => ({ ...b, source: "INTERNAL" })),
-                    ...(data.googleBookDto    || []).map(b => ({ ...b, source: "GOOGLE"   })),
-                    ...(data.openLibraryResults||[]).map(b => ({ ...b, source: "OPENLIBRARY" })),
-                    ...(data.amazonResult     || []).map(b => ({ ...b, source: "AMAZON"   })),
+                    ...(data.localResults || []).map(b => ({
+                        ...b,
+                        source: "INTERNAL",
+                        isbn: b.isbn || "N/A"
+                    })),
+                    ...(data.googleBookResults || []).map(b => ({
+                        ...b,
+                        source: "GOOGLE",
+                        isbn: b.isbn || "N/A"
+                    })),
+                    ...(data.openLibraryResults || []).map(b => ({
+                        ...b,
+                        source: "OPENLIBRARY",
+                        isbn: b.isbn || "N/A"
+                    })),
+                    ...(data.amazonBookResults || []).map(b => ({
+                        ...b,
+                        source: "AMAZON",
+                        isbn: b.isbn || "N/A"
+                    })),
                 ];
                 const found = combined.find(
                     b => b.id.toString() === id && b.source === source.toUpperCase()
                 );
                 if (!found) throw new Error("Book not found");
                 setBook(found);
+                console.log("Fetched book:", found);
             })
             .catch(e => setError(e.message))
             .finally(() => setLoading(false));
     }, [source, id]);
 
-    if (loading)  return <p>Loading book details…</p>;
-    if (error)    return <p style={{ color: "red" }}>Error: {error}</p>;
-    if (!book)    return <p>Book not found</p>;
+    if (loading) return <p>Loading book details…</p>;
+    if (error) return <p style={{ color: "red" }}>Error: {error}</p>;
+    if (!book) return <p>Book not found</p>;
 
     const handleAddToCart = async () => {
         const token = localStorage.getItem("token");
@@ -60,15 +76,15 @@ const BookDetail = () => {
 
         setAdding(true);
         const payload = {
-            quantity:   qty,
-            itemType:   "BOOK",
+            quantity: qty,
+            itemType: "BOOK",
             itemSource: book.source === "INTERNAL" ? "INTERNAL" : "EXTERNAL",
-            bookId:     book.source === "INTERNAL" ? book.id : undefined,
+            bookId: book.source === "INTERNAL" ? book.id : undefined,
             externalId: book.source !== "INTERNAL" ? book.id : undefined,
-            title:      book.title,
-            author:     book.author,
-            price:      displayedPrice,
-            isbn:       book.isbn,
+            title: book.title,
+            author: book.author,
+            price: displayedPrice,
+            isbn: book.isbn,
             imageUrl:
                 book.source === "GOOGLE"
                     ? (
@@ -82,19 +98,14 @@ const BookDetail = () => {
                         : book.imageUrl
         };
 
-        console.log("payload →", JSON.stringify(payload, null, 2));
-
         try {
             const res = await fetch("http://localhost:8080/api/v1/cart/add", {
-                method:  "POST",
+                method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
                 },
                 body: JSON.stringify(payload)
-            });
-            console.log("Outgoing headers:", {
-                "Authorization": `Bearer ${token}`
             });
 
             if (!res.ok) {
@@ -115,6 +126,48 @@ const BookDetail = () => {
         }
     };
 
+    const handleUpdateInDatabase = async () => {
+        const token = localStorage.getItem("token");
+
+        if (!token) {
+            alert("Please log in to update the database");
+            return;
+        }
+
+        const displayedPrice = book.price ?? book.saleInfo?.listPrice?.amount ?? 29.99;
+
+        setUpdating(true);
+        const payload = {
+            title: book.title,
+            author: book.author,
+            isbn: book.isbn || "N/A",
+            price: displayedPrice
+        };
+
+        try {
+            const res = await fetch("http://localhost:8080/api/bookstore/book/update", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                let text = await res.text();
+                throw new Error(`HTTP ${res.status}: ${text}`);
+            } else {
+                const responseText = await res.text();
+                alert(`Book ${book.title} updated/added to database successfully! ${responseText}`);
+            }
+        } catch (e) {
+            console.error("updateInDatabase failed:", e);
+            alert("Could not update/add book to database. See console for details.");
+        } finally {
+            setUpdating(false);
+        }
+    };
 
     return (
         <div style={{ maxWidth: 600, margin: "2rem auto", padding: "0 1rem" }}>
@@ -132,11 +185,11 @@ const BookDetail = () => {
 
             <h1 style={{ margin: "1rem 0 0.5rem" }}>{book.title}</h1>
             <p><strong>Author:</strong> {book.author}</p>
+            {book.isbn && <p><strong>ISBN:</strong> {book.isbn}</p>}
             {book.price && <p><strong>Price:</strong> ${book.price}</p>}
-            {book.isbn  && <p><strong>ISBN:</strong> {book.isbn}</p>}
             {book.publicationYear && <p><strong>Year:</strong> {book.publicationYear}</p>}
-            {book.pageCount       && <p><strong>Pages:</strong> {book.pageCount}</p>}
-            {book.genre           && <p><strong>Genre:</strong> {book.genre}</p>}
+            {book.pageCount && <p><strong>Pages:</strong> {book.pageCount}</p>}
+            {book.genre && <p><strong>Genre:</strong> {book.genre}</p>}
 
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: "1rem 0" }}>
                 <button
@@ -152,13 +205,23 @@ const BookDetail = () => {
                 >+</button>
             </div>
 
-            <button
-                onClick={handleAddToCart}
-                disabled={adding}
-                className="add-to-cart-button"
-            >
-                {adding ? "Adding…" : "Add to Cart"}
-            </button>
+            <div className="button-container">
+                <button
+                    onClick={handleAddToCart}
+                    disabled={adding}
+                    className="add-to-cart-button"
+                >
+                    {adding ? "Adding…" : "Add to Cart"}
+                </button>
+
+                <button
+                    onClick={handleUpdateInDatabase}
+                    disabled={updating}
+                    className="update-button"
+                >
+                    {updating ? "Updating…" : "Update in Database"}
+                </button>
+            </div>
         </div>
     );
 };
