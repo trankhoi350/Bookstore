@@ -3,6 +3,9 @@ package com.project.bookstore.book;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -25,6 +28,7 @@ import java.util.List;
 public class AmazonService {
     private WebDriver driver;
     private final Logger log = LoggerFactory.getLogger(getClass());
+    private static final String AMAZON_DP_URL = "https://www.amazon.com/dp/";
 
     @PostConstruct
     public void initialize() {
@@ -208,5 +212,25 @@ public class AmazonService {
             }
         }
         return false;
+    }
+
+    public String findCoverUrlById(String asin) {
+        try {
+            // use Jsoup (or your Selenium code) to fetch the page
+            Document doc = Jsoup.connect(AMAZON_DP_URL + asin)
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+                    .timeout(10_000)
+                    .get();
+
+            // try the “landing image” selector first
+            Element img = doc.selectFirst("#imgBlkFront, .imgTagWrapper img");
+            if (img != null) {
+                String src = img.attr("src");
+                if (!src.isEmpty()) return src;
+            }
+        } catch (Exception e) {
+            // fall through
+        }
+        return null;
     }
 }

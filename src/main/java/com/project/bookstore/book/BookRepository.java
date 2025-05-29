@@ -11,6 +11,7 @@ import java.util.Optional;
 @Repository
 public interface BookRepository extends JpaRepository<Book, Long> {
     Optional<Book> findBooksById(Long id);
+    List<Book> findBooksByTitle(String title);
 
     @Query(value = """
         SELECT *, ts_rank(to_tsvector('english', title || ' ' || description), to_tsquery('english', :query)) AS rank
@@ -18,4 +19,7 @@ public interface BookRepository extends JpaRepository<Book, Long> {
         ORDER BY rank DESC
     """, nativeQuery = true)
     List<Book> searchByFullText(@Param("query") String query);
+
+    @Query("SELECT b FROM Book b WHERE LOWER(b.title) = LOWER(:title)")
+    Book findByTitleIgnoreCase(@Param("title") String title);
 }

@@ -7,6 +7,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @Entity
@@ -37,6 +39,9 @@ public class CartItem {
     private String genre;
     private String publicationYear;
     private String isbn;
+    private BigDecimal price;
+    @Column(length = 1024)
+    private String imageUrl;
 
     @Enumerated(EnumType.STRING)
     private ItemSource itemSource;
